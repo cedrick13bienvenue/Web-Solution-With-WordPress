@@ -64,3 +64,12 @@ In this phase, we configure the storage on the **Web Server** using LVM to ensur
 4. **Security Group**: Open Port 3306 on the DB Server for the Web Server's IP address only.
 
 ---
+
+
+## Phase 4: Final Validation
+
+1. **Connect to DB**: On the Web Server, install `mysql-client` and test the remote connection.
+2. **Browser Setup**: Access `http://<Web-Server-Public-IP>/wordpress/` in your browser.
+3. **Setup Wizard**: Enter the DB Name, Username, Password, and the **DB Server Private IP** as the Database Host.
+
+> **Final Verification:** If successful, you will see the message "All right, sparky! You’ve made it through this part of the installation".
