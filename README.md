@@ -51,3 +51,16 @@ In this phase, we configure the storage on the **Web Server** using LVM to ensur
 `sudo chown -R apache:apache /var/www/html/`.
 
 ---
+
+## Phase 3: Data Tier (Database Server)
+
+1. **Setup Storage**: Launch a second RedHat instance (DB Server) and repeat Phase 1, creating a `db-lv` instead of `apps-lv`.
+2. **Install MySQL**: Install and start `mysql-server`.
+3. **Configure Database**:
+* Create a database named `wordpress`.
+* Create a user and grant privileges for the **Web Server's Private IP**.
+
+
+4. **Security Group**: Open Port 3306 on the DB Server for the Web Server's IP address only.
+
+---
