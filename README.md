@@ -28,3 +28,15 @@ In this phase, we configure the storage on the **Web Server** using LVM to ensur
 4. **Create Logical Volumes (LV)**:
 * `apps-lv` (14G) for website data: `sudo lvcreate -n apps-lv -L 14G webdata-vg`.
 * `logs-lv` (14G) for log storage: `sudo lvcreate -n logs-lv -L 14G webdata-vg`.
+
+> **Expected Output:** `sudo lvs` should display both logical volumes with their assigned sizes.
+
+### 1.4 Formatting and Mounting
+
+1. **Format LVs**: Use `mkfs.ext4` for both `apps-lv` and `logs-lv`.
+2. **Mount Web Root**: Mount `apps-lv` to `/var/www/html`:
+`sudo mount /dev/webdata-vg/apps-lv /var/www/html/`.
+3. **Mount Logs**: Backup `/var/log` using `rsync`, then mount `logs-lv` to `/var/log`.
+4. **Persist Mounts**: Update `/etc/fstab` using the UUIDs obtained from `sudo blkid`.
+
+---
