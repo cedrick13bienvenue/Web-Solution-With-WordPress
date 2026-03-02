@@ -40,3 +40,14 @@ In this phase, we configure the storage on the **Web Server** using LVM to ensur
 4. **Persist Mounts**: Update `/etc/fstab` using the UUIDs obtained from `sudo blkid`.
 
 ---
+
+## Phase 2: Application Layer (WordPress Installation)
+
+1. **Install Dependencies**: Install Apache (httpd) and PHP with required modules.
+`sudo yum install wget httpd php php-mysqlnd php-fpm php-json -y`.
+2. **Start Services**: Enable and start httpd and php-fpm.
+3. **Download WordPress**: Fetch the latest WordPress package and move it to `/var/www/html/`.
+4. **Set Permissions**: Change ownership to the `apache` user:
+`sudo chown -R apache:apache /var/www/html/`.
+
+---
