@@ -17,3 +17,14 @@ In this phase, we configure the storage on the **Web Server** using LVM to ensur
 3. Repeat this for the other two disks (`xvdg` and `xvdh`).
 
 > **Expected Output:** `lsblk` should show a partition (e.g., `xvdf1`) under each disk.
+
+### 1.3 Configuring the LVM Stack
+
+1. **Install LVM2**: `sudo yum install lvm2 -y`.
+2. **Create Physical Volumes (PV)**: Mark the partitions for LVM use:
+`sudo pvcreate /dev/xvdf1 /dev/xvdg1 /dev/xvdh1`.
+3. **Create Volume Group (VG)**: Add all 3 PVs to a group named `webdata-vg`:
+`sudo vgcreate webdata-vg /dev/xvdf1 /dev/xvdg1 /dev/xvdh1`.
+4. **Create Logical Volumes (LV)**:
+* `apps-lv` (14G) for website data: `sudo lvcreate -n apps-lv -L 14G webdata-vg`.
+* `logs-lv` (14G) for log storage: `sudo lvcreate -n logs-lv -L 14G webdata-vg`.
