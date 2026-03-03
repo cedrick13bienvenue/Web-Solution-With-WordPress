@@ -257,3 +257,45 @@ The user `myuser` is intentionally bound to `172.31.30.63` (the Web-Server's pri
 ![MariaDB install complete, SQL provisioning commands, and exit](screenshoots/8.png)
 
 ---
+
+## **Phase 3: WordPress End-to-End Configuration & Verification**
+
+### **3.1 Database Connection Setup**
+
+With the DB server ready, the WordPress setup wizard was opened in the browser via the Web-Server's public IP. The database connection details were entered:
+
+| Field | Value |
+|---|---|
+| Database Name | `wordpress` |
+| Username | `myuser` |
+| Password | `mypassword` |
+| Database Host | `172.31.17.159` (DB server private IP) |
+| Table Prefix | `wp_` |
+
+![WordPress database connection form filled with DB server private IP](screenshoots/10.png)
+
+WordPress confirmed the connection was successful.
+
+![WordPress confirms successful database connection — "All right, sparky!"](screenshoots/11.png)
+
+---
+
+### **3.2 WordPress Installation**
+
+After confirming the database connection, the installation wizard was completed — site title, admin username (`cedrick13bienvenue`), and password were configured.
+
+![WordPress installation success page](screenshoots/12.png)
+
+---
+
+### **3.3 Final Verification — Admin Login & Dashboard**
+
+Logged in to the WordPress admin panel to confirm end-to-end functionality.
+
+![WordPress login page](screenshoots/13.png)
+
+![WordPress admin dashboard — "Welcome to WordPress!"](screenshoots/14.png)
+
+The Three-Tier WordPress solution is fully operational: the Web-Server (Presentation/Application Tier) communicates with the Database-Server (Data Tier) over the private network, serving WordPress to the public internet.
+
+---
