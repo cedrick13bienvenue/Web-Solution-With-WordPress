@@ -1,75 +1,129 @@
-# Project: Three-Tier WordPress Solution with LVM
-
-## Phase 1: Storage Infrastructure Setup (Web Server)
-
-In this phase, we configure the storage on the **Web Server** using LVM to ensure flexibility for future scaling.
-
-### 1.1 Provisioning and Attaching EBS Volumes
-
-1. Launch a **RedHat EC2** instance to serve as the Web Server.
-2. Create three **10 GiB** EBS volumes in the same Availability Zone (AZ).
-3. Attach all three volumes to your Web Server instance.
-
-### 1.2 Disk Partitioning with `gdisk`
-
-1. Use `lsblk` to inspect the newly attached block devices (typically `xvdf`, `xvdg`, `xvdh`).
-2. Run `sudo gdisk /dev/xvdf` to create a new partition. Use hex code `8E00` for Linux LVM.
-3. Repeat this for the other two disks (`xvdg` and `xvdh`).
-
-> **Expected Output:** `lsblk` should show a partition (e.g., `xvdf1`) under each disk.
-
-### 1.3 Configuring the LVM Stack
-
-1. **Install LVM2**: `sudo yum install lvm2 -y`.
-2. **Create Physical Volumes (PV)**: Mark the partitions for LVM use:
-`sudo pvcreate /dev/xvdf1 /dev/xvdg1 /dev/xvdh1`.
-3. **Create Volume Group (VG)**: Add all 3 PVs to a group named `webdata-vg`:
-`sudo vgcreate webdata-vg /dev/xvdf1 /dev/xvdg1 /dev/xvdh1`.
-4. **Create Logical Volumes (LV)**:
-* `apps-lv` (14G) for website data: `sudo lvcreate -n apps-lv -L 14G webdata-vg`.
-* `logs-lv` (14G) for log storage: `sudo lvcreate -n logs-lv -L 14G webdata-vg`.
-
-> **Expected Output:** `sudo lvs` should display both logical volumes with their assigned sizes.
-
-### 1.4 Formatting and Mounting
-
-1. **Format LVs**: Use `mkfs.ext4` for both `apps-lv` and `logs-lv`.
-2. **Mount Web Root**: Mount `apps-lv` to `/var/www/html`:
-`sudo mount /dev/webdata-vg/apps-lv /var/www/html/`.
-3. **Mount Logs**: Backup `/var/log` using `rsync`, then mount `logs-lv` to `/var/log`.
-4. **Persist Mounts**: Update `/etc/fstab` using the UUIDs obtained from `sudo blkid`.
+This is a detailed, professional documentation of your **Phase 1: Web-Server Deployment**. It is written to reflect the exact journey completed, including the specific terminal commands and the logic used to overcome RHEL 10's strict security.
 
 ---
 
-## Phase 2: Application Layer (WordPress Installation)
+# **Project Documentation: Three-Tier WordPress Solution**
 
-1. **Install Dependencies**: Install Apache (httpd) and PHP with required modules.
-`sudo yum install wget httpd php php-mysqlnd php-fpm php-json -y`.
-2. **Start Services**: Enable and start httpd and php-fpm.
-3. **Download WordPress**: Fetch the latest WordPress package and move it to `/var/www/html/`.
-4. **Set Permissions**: Change ownership to the `apache` user:
-`sudo chown -R apache:apache /var/www/html/`.
+## **Phase 1: Web-Server Configuration (Presentation & Application Tier)**
 
----
+### **1.1 Infrastructure & Storage Provisioning**
 
-## Phase 3: Data Tier (Database Server)
+The foundation of the Web-Server requires dedicated storage and specific security rules to allow public web traffic.
 
-1. **Setup Storage**: Launch a second RedHat instance (DB Server) and repeat Phase 1, creating a `db-lv` instead of `apps-lv`.
-2. **Install MySQL**: Install and start `mysql-server`.
-3. **Configure Database**:
-* Create a database named `wordpress`.
-* Create a user and grant privileges for the **Web Server's Private IP**.
+* **AMI**: Red Hat Enterprise Linux (RHEL) 10.
+* **Instance Type**: `t3.micro`.
+* **Storage**: 10 GiB (Root, `nvme0n1`) + **2 x 10 GiB EBS Volumes** (`nvme1n1`, `nvme2n1`) attached as `gp3`.
+* **Security Group Rules**:
+  * **SSH (22)**: Access from `My IP`.
+  * **HTTP (80)**: Access from `0.0.0.0/0`.
 
-
-4. **Security Group**: Open Port 3306 on the DB Server for the Web Server's IP address only.
+> **[RESERVE: Screenshot of AWS Console showing the Web-Server instance with the 2 extra EBS volumes attached]**
 
 ---
 
+### **1.2 Storage Subsystem (LVM) Setup**
 
-## Phase 4: Final Validation
+We implemented Logical Volume Management (LVM) to manage application data and logs across the two additional 10 GiB disks.
 
-1. **Connect to DB**: On the Web Server, install `mysql-client` and test the remote connection.
-2. **Browser Setup**: Access `http://<Web-Server-Public-IP>/wordpress/` in your browser.
-3. **Setup Wizard**: Enter the DB Name, Username, Password, and the **DB Server Private IP** as the Database Host.
+**Discovery — verifying attached disks:**
+Before proceeding, `lsblk` was run to confirm which block devices were actually available:
 
-> **Final Verification:** If successful, you will see the message "All right, sparky! You’ve made it through this part of the installation".
+```bash
+lsblk
+```
+
+Output confirmed two extra disks (`nvme1n1`, `nvme2n1`) were attached. A third volume (`nvme3n1`) was not present, so all LVM work was performed using the two available disks.
+
+![lsblk output and failed nvme3n1 discovery](screenshoots/2.png)
+
+---
+
+**Step 1 — Disk Partitioning:**
+Each disk was partitioned interactively with `fdisk`. A GPT label was created (`g`), a new partition spanning the full disk was added (`n`, accepting defaults), and the partition type was set to **Linux LVM** (`t` → `44`).
+
+```bash
+sudo fdisk /dev/nvme1n1
+# g → n → (defaults) → t → 44 → w
+
+sudo fdisk /dev/nvme2n1
+# g → n → (defaults) → t → 44 → w
+```
+
+![fdisk partitioning on nvme1n1 and nvme2n1](screenshoots/1.png)
+
+---
+
+**Step 2 — LVM Stack Creation:**
+
+```bash
+# Initialize Physical Volumes
+sudo pvcreate /dev/nvme1n1p1 /dev/nvme2n1p1
+
+# Create the Volume Group (20 GiB total)
+sudo vgcreate webdata-vg /dev/nvme1n1p1 /dev/nvme2n1p1
+
+# Create Logical Volumes
+sudo lvcreate -n apps-lv -L 14G webdata-vg       # 14 GiB for the web application
+sudo lvcreate -n logs-lv -l 100%FREE webdata-vg   # ~6 GiB for system logs
+```
+
+Verified with:
+```bash
+sudo lvs
+```
+```
+LV      VG         Attr       LSize
+apps-lv webdata-vg -wi-a----- 14.00g
+logs-lv webdata-vg -wi-a-----  5.99g
+```
+
+![vgcreate, lvcreate, lvs output, mkfs.ext4, and rsync log backup](screenshoots/3.png)
+
+---
+
+**Step 3 — Filesystem & Mounting:**
+
+```bash
+# Format both volumes as ext4
+sudo mkfs.ext4 /dev/webdata-vg/apps-lv
+sudo mkfs.ext4 /dev/webdata-vg/logs-lv
+
+# Create mount points and recovery directory
+sudo mkdir -p /var/www/html
+sudo mkdir -p /home/recovery/logs
+
+# Preserve existing logs before replacing /var/log
+sudo rsync -av /var/log/ /home/recovery/logs/
+
+# Mount the new volumes
+sudo mount /dev/webdata-vg/apps-lv /var/www/html/
+sudo mount /dev/webdata-vg/logs-lv /var/log
+
+# Restore logs onto the new volume
+sudo rsync -av /home/recovery/logs/ /var/log/
+```
+
+---
+
+**Step 4 — Persistence via `/etc/fstab`:**
+
+UUIDs were retrieved and written to `/etc/fstab` to ensure mounts survive reboots:
+
+```bash
+sudo blkid
+```
+
+Key UUIDs captured:
+* `apps-lv`: `973897b4-68b2-41a2-851b-0e3fe4ccd4bb`
+* `logs-lv`: `c3b73404-fb37-42e0-867b-e30c49f0892f`
+
+```bash
+sudo vi /etc/fstab   # Added UUID entries for both LVs
+
+sudo mount -a               # Verify no fstab errors
+sudo systemctl daemon-reload
+```
+
+![blkid output, /etc/fstab entries, and mount -a verification](screenshoots/4.png)
+
+---
