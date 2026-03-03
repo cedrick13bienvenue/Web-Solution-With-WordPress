@@ -201,3 +201,59 @@ The final step was verifying that the web server serves the WordPress setup page
 ![WordPress Language Selection page served via the Web-Server public IP](screenshoots/9.png)
 
 ---
+
+## **Phase 2: Database-Server Configuration (Data Tier)**
+
+### **2.1 Infrastructure**
+
+A dedicated EC2 instance was provisioned as the database tier, kept isolated from the public internet (no HTTP inbound rule).
+
+* **AMI**: Red Hat Enterprise Linux (RHEL) 10.
+* **Instance Type**: `t3.micro`.
+* **Private IP**: `172.31.17.159` (eu-north-1).
+* **Security Group**: MySQL/Aurora (3306) open only to the Web-Server's private IP (`172.31.30.63`).
+
+---
+
+### **2.2 MariaDB Installation & Service Setup**
+
+```bash
+sudo yum install mariadb-server -y
+sudo systemctl enable --now mariadb
+```
+
+17 packages were installed including MariaDB `10.11.15`, the Perl DBI drivers, and `mysql-selinux`. Three systemd symlinks were created: `mysql.service`, `mysqld.service`, and `mariadb.service`.
+
+![SSH into DB server and yum install mariadb-server](screenshoots/7.png)
+
+---
+
+### **2.3 WordPress Database & User Provisioning**
+
+Accessed the MariaDB shell directly (root, no password set yet on a fresh instance):
+
+```bash
+sudo mariadb
+```
+
+```sql
+-- Create the application database
+CREATE DATABASE wordpress;
+
+-- Create a dedicated user restricted to the Web-Server's private IP
+CREATE USER 'myuser'@'172.31.30.63' IDENTIFIED BY 'mypassword';
+
+-- Grant full access to the wordpress database only
+GRANT ALL PRIVILEGES ON wordpress.* TO 'myuser'@'172.31.30.63';
+
+-- Apply privilege changes immediately
+FLUSH PRIVILEGES;
+
+EXIT;
+```
+
+The user `myuser` is intentionally bound to `172.31.30.63` (the Web-Server's private IP), ensuring the database is not reachable from any other host.
+
+![MariaDB install complete, SQL provisioning commands, and exit](screenshoots/8.png)
+
+---
