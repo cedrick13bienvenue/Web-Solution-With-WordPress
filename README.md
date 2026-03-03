@@ -1,12 +1,14 @@
-This is a detailed, professional documentation of your **Phase 1: Web-Server Deployment**. It is written to reflect the exact journey completed, including the specific terminal commands and the logic used to overcome RHEL 10's strict security.
+# Three-Tier WordPress Solution on AWS
+
+## Project Overview
+
+This project involves deploying a **Three-Tier WordPress application** on AWS using two RHEL 10 EC2 instances. The architecture separates concerns into a **Presentation/Application Tier** (Web Server with Apache, PHP, and WordPress) and a **Data Tier** (dedicated MariaDB database server). Storage on the Web Server is managed with **LVM** across multiple EBS volumes for flexibility and log isolation.
 
 ---
 
-# **Project Documentation: Three-Tier WordPress Solution**
+## Phase 1: Web-Server Configuration (Presentation & Application Tier)
 
-## **Phase 1: Web-Server Configuration (Presentation & Application Tier)**
-
-### **1.1 Infrastructure & Storage Provisioning**
+### 1.1 Infrastructure & Storage Provisioning
 
 The foundation of the Web-Server requires dedicated storage and specific security rules to allow public web traffic.
 
@@ -17,11 +19,10 @@ The foundation of the Web-Server requires dedicated storage and specific securit
   * **SSH (22)**: Access from `My IP`.
   * **HTTP (80)**: Access from `0.0.0.0/0`.
 
-> **[RESERVE: Screenshot of AWS Console showing the Web-Server instance with the 2 extra EBS volumes attached]**
 
 ---
 
-### **1.2 Storage Subsystem (LVM) Setup**
+### 1.2 Storage Subsystem (LVM) Setup
 
 We implemented Logical Volume Management (LVM) to manage application data and logs across the two additional 10 GiB disks.
 
@@ -34,7 +35,8 @@ lsblk
 
 Output confirmed two extra disks (`nvme1n1`, `nvme2n1`) were attached. A third volume (`nvme3n1`) was not present, so all LVM work was performed using the two available disks.
 
-![lsblk output and failed nvme3n1 discovery](screenshoots/2.png)
+> **Expected Output**: `lsblk` confirms only two extra disks are present.
+> ![lsblk output and failed nvme3n1 discovery](screenshoots/2.png)
 
 ---
 
@@ -49,7 +51,8 @@ sudo fdisk /dev/nvme2n1
 # g → n → (defaults) → t → 44 → w
 ```
 
-![fdisk partitioning on nvme1n1 and nvme2n1](screenshoots/1.png)
+> **Expected Output**: Both disks show a partition of type `Linux LVM`.
+> ![fdisk partitioning on nvme1n1 and nvme2n1](screenshoots/1.png)
 
 ---
 
@@ -77,7 +80,8 @@ apps-lv webdata-vg -wi-a----- 14.00g
 logs-lv webdata-vg -wi-a-----  5.99g
 ```
 
-![vgcreate, lvcreate, lvs output, mkfs.ext4, and rsync log backup](screenshoots/3.png)
+> **Expected Output**: `sudo lvs` displays both logical volumes with their assigned sizes.
+> ![vgcreate, lvcreate, lvs output, mkfs.ext4, and rsync log backup](screenshoots/3.png)
 
 ---
 
@@ -124,11 +128,12 @@ sudo mount -a               # Verify no fstab errors
 sudo systemctl daemon-reload
 ```
 
-![blkid output, /etc/fstab entries, and mount -a verification](screenshoots/4.png)
+> **Expected Output**: `sudo mount -a` completes with no errors; both volumes appear in `df -h`.
+> ![blkid output, /etc/fstab entries, and mount -a verification](screenshoots/4.png)
 
 ---
 
-### **1.3 Web Stack & WordPress Deployment**
+### 1.3 Web Stack & WordPress Deployment
 
 With storage ready, we installed the software necessary to serve the application.
 
@@ -140,7 +145,8 @@ sudo yum install wget httpd php php-mysqlnd php-fpm php-json -y
 
 25 packages were installed successfully, including Apache (`httpd 2.4.63`), PHP (`8.3.29`), and all required modules.
 
-![yum install transaction complete and systemctl enable](screenshoots/5.png)
+> **Expected Output**: `yum` completes with `Complete!` and lists all 25 installed packages.
+> ![yum install transaction complete and systemctl enable](screenshoots/5.png)
 
 ---
 
@@ -169,11 +175,12 @@ sudo chown -R apache:apache /var/www/html/
 sudo chmod -R 755 /var/www/html/
 ```
 
-![WordPress cp, chown, chmod and SELinux hardening](screenshoots/6.png)
+> **Expected Output**: Files are extracted and copied; `ls -l /var/www/html` shows `apache:apache` ownership.
+> ![WordPress cp, chown, chmod and SELinux hardening](screenshoots/6.png)
 
 ---
 
-### **1.4 RHEL 10 Security Hardening (SELinux)**
+### 1.4 RHEL 10 Security Hardening (SELinux)
 
 To allow the Web-Server to function in a production-ready RHEL 10 environment, SELinux policies were adjusted.
 
@@ -194,17 +201,18 @@ This applied the `httpd_sys_rw_content_t` SELinux context to the WordPress direc
 
 ---
 
-### **1.5 Phase 1 Verification**
+### 1.5 Phase 1 Verification
 
 The final step was verifying that the web server serves the WordPress setup page over the public internet.
 
-![WordPress Language Selection page served via the Web-Server public IP](screenshoots/9.png)
+> **Expected Output**: The WordPress Language Selection page loads via the Web-Server's public IP.
+> ![WordPress Language Selection page served via the Web-Server public IP](screenshoots/9.png)
 
 ---
 
-## **Phase 2: Database-Server Configuration (Data Tier)**
+## Phase 2: Database-Server Configuration (Data Tier)
 
-### **2.1 Infrastructure**
+### 2.1 Infrastructure
 
 A dedicated EC2 instance was provisioned as the database tier, kept isolated from the public internet (no HTTP inbound rule).
 
@@ -215,7 +223,7 @@ A dedicated EC2 instance was provisioned as the database tier, kept isolated fro
 
 ---
 
-### **2.2 MariaDB Installation & Service Setup**
+### 2.2 MariaDB Installation & Service Setup
 
 ```bash
 sudo yum install mariadb-server -y
@@ -224,11 +232,12 @@ sudo systemctl enable --now mariadb
 
 17 packages were installed including MariaDB `10.11.15`, the Perl DBI drivers, and `mysql-selinux`. Three systemd symlinks were created: `mysql.service`, `mysqld.service`, and `mariadb.service`.
 
-![SSH into DB server and yum install mariadb-server](screenshoots/7.png)
+> **Expected Output**: `yum` completes with `Complete!`; `systemctl` creates the mariadb symlinks.
+> ![SSH into DB server and yum install mariadb-server](screenshoots/7.png)
 
 ---
 
-### **2.3 WordPress Database & User Provisioning**
+### 2.3 WordPress Database & User Provisioning
 
 Accessed the MariaDB shell directly (root, no password set yet on a fresh instance):
 
@@ -254,47 +263,53 @@ EXIT;
 
 The user `myuser` is intentionally bound to `172.31.30.63` (the Web-Server's private IP), ensuring the database is not reachable from any other host.
 
-![MariaDB install complete, SQL provisioning commands, and exit](screenshoots/8.png)
+> **Expected Output**: Each SQL statement returns `Query OK`.
+> ![MariaDB install complete, SQL provisioning commands, and exit](screenshoots/8.png)
 
 ---
 
-## **Phase 3: WordPress End-to-End Configuration & Verification**
+## Phase 3: WordPress End-to-End Configuration & Verification
 
-### **3.1 Database Connection Setup**
+### 3.1 Database Connection Setup
 
 With the DB server ready, the WordPress setup wizard was opened in the browser via the Web-Server's public IP. The database connection details were entered:
 
 | Field | Value |
-|---|---|
+| --- | --- |
 | Database Name | `wordpress` |
 | Username | `myuser` |
 | Password | `mypassword` |
 | Database Host | `172.31.17.159` (DB server private IP) |
 | Table Prefix | `wp_` |
 
-![WordPress database connection form filled with DB server private IP](screenshoots/10.png)
+> **Expected Output**: The WordPress DB connection form accepts the credentials without errors.
+> ![WordPress database connection form filled with DB server private IP](screenshoots/10.png)
 
 WordPress confirmed the connection was successful.
 
-![WordPress confirms successful database connection — "All right, sparky!"](screenshoots/11.png)
+> **Expected Output**: "All right, sparky! You've made it through this part of the installation."
+> ![WordPress confirms successful database connection](screenshoots/11.png)
 
 ---
 
-### **3.2 WordPress Installation**
+### 3.2 WordPress Installation
 
 After confirming the database connection, the installation wizard was completed — site title, admin username (`cedrick13bienvenue`), and password were configured.
 
-![WordPress installation success page](screenshoots/12.png)
+> **Expected Output**: WordPress displays the "Success!" confirmation page.
+> ![WordPress installation success page](screenshoots/12.png)
 
 ---
 
-### **3.3 Final Verification — Admin Login & Dashboard**
+### 3.3 Final Verification — Admin Login & Dashboard
 
 Logged in to the WordPress admin panel to confirm end-to-end functionality.
 
-![WordPress login page](screenshoots/13.png)
+> **Expected Output**: WordPress login page is accessible.
+> ![WordPress login page](screenshoots/13.png)
 
-![WordPress admin dashboard — "Welcome to WordPress!"](screenshoots/14.png)
+> **Final Verification**: The WordPress admin dashboard loads, confirming the full Three-Tier stack is operational.
+> ![WordPress admin dashboard — "Welcome to WordPress!"](screenshoots/14.png)
 
 The Three-Tier WordPress solution is fully operational: the Web-Server (Presentation/Application Tier) communicates with the Database-Server (Data Tier) over the private network, serving WordPress to the public internet.
 
