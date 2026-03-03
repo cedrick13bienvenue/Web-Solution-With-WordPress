@@ -127,3 +127,48 @@ sudo systemctl daemon-reload
 ![blkid output, /etc/fstab entries, and mount -a verification](screenshoots/4.png)
 
 ---
+
+### **1.3 Web Stack & WordPress Deployment**
+
+With storage ready, we installed the software necessary to serve the application.
+
+**Step 1 — Software Installation:**
+
+```bash
+sudo yum install wget httpd php php-mysqlnd php-fpm php-json -y
+```
+
+25 packages were installed successfully, including Apache (`httpd 2.4.63`), PHP (`8.3.29`), and all required modules.
+
+![yum install transaction complete and systemctl enable](screenshoots/5.png)
+
+---
+
+**Step 2 — Service Activation:**
+
+```bash
+sudo systemctl enable --now httpd php-fpm
+```
+
+This enabled and immediately started both Apache and the PHP FastCGI Process Manager, creating the appropriate systemd symlinks.
+
+---
+
+**Step 3 — WordPress Deployment:**
+
+```bash
+# Download and extract WordPress
+wget http://wordpress.org/latest.tar.gz
+tar -xzvf latest.tar.gz
+
+# Copy files into the LVM-backed web root
+sudo cp -R wordpress/* /var/www/html/
+
+# Set correct ownership and permissions
+sudo chown -R apache:apache /var/www/html/
+sudo chmod -R 755 /var/www/html/
+```
+
+![WordPress cp, chown, chmod and SELinux hardening](screenshoots/6.png)
+
+---
