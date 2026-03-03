@@ -172,3 +172,32 @@ sudo chmod -R 755 /var/www/html/
 ![WordPress cp, chown, chmod and SELinux hardening](screenshoots/6.png)
 
 ---
+
+### **1.4 RHEL 10 Security Hardening (SELinux)**
+
+To allow the Web-Server to function in a production-ready RHEL 10 environment, SELinux policies were adjusted.
+
+**Step 1 — Allow Database Communication:**
+
+```bash
+sudo setsebool -P httpd_can_network_connect 1
+sudo setsebool -P httpd_can_network_connect_db 1
+```
+
+**Step 2 — Label Web Content:**
+
+```bash
+sudo chcon -t httpd_sys_rw_content_t /var/www/html/ -R
+```
+
+This applied the `httpd_sys_rw_content_t` SELinux context to the WordPress directory, permitting Apache to read and write files as required by WordPress (e.g., plugin installs, uploads).
+
+---
+
+### **1.5 Phase 1 Verification**
+
+The final step was verifying that the web server serves the WordPress setup page over the public internet.
+
+![WordPress Language Selection page served via the Web-Server public IP](screenshoots/9.png)
+
+---
